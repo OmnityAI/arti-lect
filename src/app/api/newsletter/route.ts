@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { newsletterSubscribers } from "@/db/schema";
 import { eq, like, or } from "drizzle-orm";
-import { appendSubscriberToSheet } from "@/lib/googleSheets"; // keep your existing helper
+import { appendSubscriberToSheet } from "@/lib/googleSheets";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,11 +19,12 @@ export async function GET(request: NextRequest) {
 
     const db = getDb();
     if (!db) {
-      // No DB configured in this environment
+      // No DB configured in this env; return empty list so build/deploy succeeds
       return NextResponse.json([], { status: 200 });
     }
 
-    let q = db.select().from(newsletterSubscribers);
+    // Use .$dynamic() to allow conditional chaining without TS errors
+    let q = db.select().from(newsletterSubscribers).$dynamic();
 
     if (search) {
       const term = `%${search}%`;
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     if (db) {
       const existing = await db
-        .select()
+        .select({ id: newsletterSubscribers.id })
         .from(newsletterSubscribers)
         .where(eq(newsletterSubscribers.email, email))
         .limit(1);
@@ -101,12 +102,11 @@ export async function POST(request: NextRequest) {
       created = row;
     }
 
-    // Try Sheets regardless of DB presence; do not fail the request if Sheets fails
+    // Sheets append is best-effort; don’t fail the subscription if it errors
     try {
       await appendSubscriberToSheet({ name, email });
     } catch (e) {
       console.error("Sheets append failed:", e);
-      // intentionally not throwing
     }
 
     return NextResponse.json(created, { status: 201 });
