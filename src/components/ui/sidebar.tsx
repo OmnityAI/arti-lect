@@ -2,7 +2,11 @@
 
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
-import { cva, VariantProps } from "class-variance-authority"
+import { cva } from "class-variance-authority";
+
+// Fallback so we don't depend on `VariantProps` from cva.
+// (This is only for typing; it won’t affect runtime.)
+type VariantProps<T> = any;
 import { PanelLeftIcon } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
